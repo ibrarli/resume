@@ -89,7 +89,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, theme }) => 
           )}
 
           {/* MAIN COLUMN BODY ZONE */}
-          <div className="w-full">
+          <div className="w-full flex flex-col gap-5">
             {!isSlateSidebar && (
               <div 
                 className={`pb-4 border-b ${
@@ -163,8 +163,8 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, theme }) => 
 
             {/* Executive Summary Block */}
             {data.summary && (
-              <div className={isSlateSidebar ? 'mt-0' : 'mt-5'}>
-                <h3 className={`text-sm font-bold tracking-wider uppercase mb-1.5 pb-0.5 border-b font-sans ${
+              <div className="print:break-inside-avoid">
+                <h3 className={`text-sm font-bold tracking-wider uppercase mb-1.5 pb-0.5 border-b font-sans print:break-after-avoid ${
                   isColorful ? 'text-indigo-900 border-indigo-200' : 
                   isEmerald ? 'text-emerald-800 border-emerald-100' :
                   isWarmEditorial ? 'text-amber-950 border-amber-900/20 normal-case italic font-serif' :
@@ -182,8 +182,8 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, theme }) => 
 
             {/* Main Content Sections */}
             {data.sections.map((section) => section.items.length > 0 && (
-              <div key={section.id} className="mt-5 print:break-inside-avoid">
-                <h3 className={`text-sm font-bold tracking-wider uppercase mb-2 pb-0.5 border-b font-sans ${
+              <div key={section.id} className="print:break-inside-auto">
+                <h3 className={`text-sm font-bold tracking-wider uppercase mb-2 pb-0.5 border-b font-sans print:break-after-avoid ${
                   isColorful ? 'text-indigo-900 border-indigo-200' : 
                   isEmerald ? 'text-emerald-800 border-emerald-100' :
                   isWarmEditorial ? 'text-amber-950 border-amber-900/20 normal-case font-serif' :
@@ -196,7 +196,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, theme }) => 
                 
                 <div className="space-y-3.5">
                   {section.items.map((item) => (
-                    <div key={item.id} className="mt-2 break-inside-avoid print:break-inside-avoid">
+                    <div key={item.id} className="break-inside-avoid print:break-inside-avoid mt-2">
                       <div className="flex justify-between items-baseline font-bold text-neutral-800">
                         <span className={`text-[13.5px] ${isColorful ? 'text-slate-900' : isEmerald ? 'text-emerald-950' : ''}`}>
                           {item.title || "Entry Title / Group Header"}
@@ -239,27 +239,23 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, theme }) => 
 
         </div>
 
-        {/* 
-          HIDDEN METADATA CAPTURE PORT
-          This stores the full base64 object inside an invisible print layer 
-          so that future uploads parse perfectly.
-        */}
+        {/* HIDDEN METADATA CAPTURE PORT */}
         <div 
-  className="absolute bottom-0 left-0 select-none pointer-events-none"
-  style={{ 
-    fontSize: '6px', 
-    color: 'white', 
-    backgroundColor: 'white',
-    lineHeight: '6px', 
-    height: '6px', 
-    width: '100%',
-    overflow: 'hidden',
-    letterSpacing: '-1px'
-  }}
-  aria-hidden="true"
->
-  {`APNRSMSTART${btoa(unescape(encodeURIComponent(JSON.stringify(data))))}_END`}
-</div>
+          className="absolute bottom-0 left-0 select-none pointer-events-none"
+          style={{ 
+            fontSize: '6px', 
+            color: 'white', 
+            backgroundColor: 'white',
+            lineHeight: '6px', 
+            height: '6px', 
+            width: '100%',
+            overflow: 'hidden',
+            letterSpacing: '-1px'
+          }}
+          aria-hidden="true"
+        >
+          {`APNRSMSTART${btoa(unescape(encodeURIComponent(JSON.stringify(data))))}_END`}
+        </div>
       </div>
     </div>
   );
