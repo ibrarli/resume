@@ -1,220 +1,244 @@
-import React, { useState } from 'react';
-import { Plus, Download, Upload, Eye, EyeOff, Trash2 } from 'lucide-react';
-import { type ResumeData, type DynamicSection } from './types';
+import { useState, useEffect } from 'react';
+import { Header } from './components/Header';
+import { FormEditor } from './components/FormEditor';
+import { ResumePreview } from './components/ResumePreview';
+import type { ResumeData, DynamicSection, SectionItem } from './types';
+import * as pdfjsLib from 'pdfjs-dist';
 
-// Initial state matching your uploaded default theme
-const initialData: ResumeData = {
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
+const LOCAL_STORAGE_KEY = 'apen_resume_engine_cache';
+const THEME_STORAGE_KEY = 'apen_resume_engine_theme';
+
+const blankCanvasStructure: ResumeData = {
   personalInfo: {
-    fullName: "IBRAR ALI",
-    title: "Fullstack Developer",
-    email: "ibraralihaidar@gmail.com",
-    phone: "+923482167078",
-    location: "Quetta, Pakistan",
-    website: "ibrar.apenapps.com",
-    links: [
-      { platform: "GitHub", url: "github.com/ibrarli" },
-      { platform: "LinkedIn", url: "linkedin.com/in/ibrarli" }
-    ]
+    fullName: '',
+    title: '',
+    email: '',
+    phone: '',
+    location: '',
+    website: '',
+    links: []
   },
-  summary: "Full-Stack Developer with 3 years experience building scalable web apps...",
-  sections: [
-    {
-      id: "exp-1",
-      title: "PROFESSIONAL EXPERIENCE",
-      type: "list",
-      items: [
-        {
-          id: "item-1",
-          title: "Full-Stack Developer",
-          subtitle: "Apex Tech Hub",
-          dateRange: "Dec 2025 - Present",
-          description: "Revamped Apex Tech Hub entire website with better User Interface and User Experience..."
-        }
-      ]
-    }
-  ]
+  summary: '',
+  sections: []
 };
 
+type ExtendedThemeUnion = 
+  | 'minimalist' 
+  | 'left-aligned' 
+  | 'colorful' 
+  | 'modern' 
+  | 'compact'
+  | 'emerald-executive'
+  | 'slate-sidebar'
+  | 'warm-editorial'
+  | 'tech-minimal'
+  | 'royal-accent';
+
 export default function App() {
-  const [resumeData, setResumeData] = useState<ResumeData>(initialData);
-  const [activeTheme, setActiveTheme] = useState<'minimalist' | 'modern' | 'compact'>('minimalist');
+  const [resumeData, setResumeData] = useState<ResumeData>(() => {
+    try {
+      const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
+      return cached ? JSON.parse(cached) : blankCanvasStructure;
+    } catch (e) {
+      console.error("Failed to parse cached canvas state:", e);
+      return blankCanvasStructure;
+    }
+  });
+
+  const [activeTheme, setActiveTheme] = useState<ExtendedThemeUnion>(() => {
+    try {
+      const cachedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+      return (cachedTheme as ExtendedThemeUnion) || 'minimalist';
+    } catch {
+      return 'minimalist';
+    }
+  });
+
+  useEffect(() => {
+    if (resumeData) {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(resumeData));
+    }
+  }, [resumeData]);
+
+  useEffect(() => {
+    localStorage.setItem(THEME_STORAGE_KEY, activeTheme);
+  }, [activeTheme]);
 
   const handlePrint = () => {
     window.print();
   };
 
-  const addSection = () => {
-    const newSection: DynamicSection = {
-      id: `custom-${Date.now()}`,
-      title: "NEW SECTION",
-      type: "list",
-      items: []
+  // Safe fallback ID generation to prevent runtime crashes over plain http/local IP addresses
+  const generateSafeId = () => {
+    if (typeof window !== 'undefined' && window.crypto && window.crypto.randomUUID) {
+      return window.crypto.randomUUID();
+    }
+    return `id_${Math.random().toString(36).substring(2, 11)}_${Date.now()}`;
+  };
+
+  const parseRawTextToLayout = (lines: string[]): ResumeData => {
+    const parsed: ResumeData = {
+      personalInfo: { fullName: '', title: '', email: '', phone: '', location: '', website: '', links: [] },
+      summary: '',
+      sections: []
     };
-    setResumeData({ ...resumeData, sections: [...resumeData.sections, newSection] });
+
+    let currentSection: DynamicSection | null = null;
+    let currentItem: SectionItem | null = null;
+    let fallbackSummaryLines: string[] = [];
+
+    const cleanLines = lines.map(l => l.trim()).filter(Boolean);
+
+    if (cleanLines.length > 0) parsed.personalInfo.fullName = cleanLines[0];
+    if (cleanLines.length > 1) parsed.personalInfo.title = cleanLines[1];
+
+    cleanLines.forEach(line => {
+      if (line.includes('@') && !parsed.personalInfo.email) {
+        parsed.personalInfo.email = line.split(' ').find(w => w.includes('@')) || '';
+      }
+      if ((line.includes('+') || line.match(/\d{4}/)) && !parsed.personalInfo.phone) {
+        const matches = line.match(/(\+\d[\d\s-]{7,15})/);
+        if (matches) parsed.personalInfo.phone = matches[0].trim();
+      }
+      if (line.toLowerCase().includes('linkedin.com/')) {
+        const url = line.split(' ').find(w => w.includes('linkedin.com')) || '';
+        parsed.personalInfo.links.push({ id: generateSafeId(), platform: 'LinkedIn', url });
+      }
+      if (line.toLowerCase().includes('github.com/')) {
+        const url = line.split(' ').find(w => w.includes('github.com')) || '';
+        parsed.personalInfo.links.push({ id: generateSafeId(), platform: 'GitHub', url });
+      }
+    });
+
+    let mode: 'NONE' | 'SUMMARY' | 'SECTION' = 'NONE';
+
+    for (let i = 2; i < cleanLines.length; i++) {
+      const line = cleanLines[i];
+      const upperLine = line.toUpperCase();
+
+      if (upperLine.includes('PROFESSIONAL SUMMARY') || upperLine.includes('SUMMARY')) {
+        mode = 'SUMMARY';
+        continue;
+      }
+
+      if (
+        upperLine === 'PROFESSIONAL EXPERIENCE' || 
+        upperLine === 'EXPERIENCE' || 
+        upperLine === 'PROJECTS' || 
+        upperLine === 'EDUCATION' || 
+        upperLine === 'CERTIFICATIONS' || 
+        upperLine === 'HONORS & AWARDS' || 
+        upperLine === 'TECHNICAL SKILLS'
+      ) {
+        mode = 'SECTION';
+        currentSection = { id: generateSafeId(), title: line, type: 'custom', items: [] };
+        parsed.sections.push(currentSection);
+        currentItem = null;
+        continue;
+      }
+
+      if (mode === 'SUMMARY') {
+        fallbackSummaryLines.push(line);
+      } else if (mode === 'SECTION' && currentSection) {
+        const hasDate = line.match(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|\d{4})/i);
+        
+        if (!currentItem && !hasDate) {
+          currentItem = { id: generateSafeId(), title: line, subtitle: '', startDate: '', endDate: '', location: '', description: '', formatMode: 'bullets' };
+          currentSection.items.push(currentItem);
+        } else if (currentItem && !currentItem.subtitle && hasDate) {
+          currentItem.subtitle = line;
+        } else if (currentItem) {
+          currentItem.description = currentItem.description ? `${currentItem.description}\n${line}` : line;
+        }
+      }
+    }
+
+    parsed.summary = fallbackSummaryLines.join(' ');
+    return parsed;
   };
 
   const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
-    // TODO: Integrate client-side PDF text parser (e.g., pdfjs-dist)
-    console.log("Parsing file:", file.name);
+
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let fullText = '';
+      let rawLines: string[] = [];
+
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const lines = textContent.items.map((item: any) => item.str);
+        rawLines = [...rawLines, ...lines];
+        fullText += lines.join(' ');
+      }
+
+     // Try both old and new marker formats
+      const sanitizedText = fullText.replace(/\s+/g, '');
+      
+      const match = 
+        sanitizedText.match(/APNRSMSTART(.*?)_END/) ||
+        sanitizedText.match(/STRUCTURAL_SYSTEM_MANIFEST_DATA_START_(.*?)_DATA_END/);
+      
+      console.log('Raw text length:', fullText.length);
+      console.log('Sanitized length:', sanitizedText.length);
+      console.log('Marker found:', !!match);
+      if (match) console.log('Base64 snippet:', match[1].substring(0, 80));
+
+      if (match && match[1]) {
+        try {
+          const base64Data = match[1].replace(/[^A-Za-z0-9+/=]/g, '');
+          const decoded = atob(base64Data);
+          // Handle both old escape() method and new TextDecoder method
+          let decodedJson: string;
+          try {
+            decodedJson = decodeURIComponent(escape(decoded));
+          } catch {
+            const bytes = new Uint8Array(decoded.split('').map(c => c.charCodeAt(0)));
+            decodedJson = new TextDecoder('utf-8').decode(bytes);
+          }
+          const parsedData: ResumeData = JSON.parse(decodedJson);
+          setResumeData(parsedData);
+          alert('🎉 Resume restored successfully!');
+        } catch (decodeError) {
+          console.error('Decode failed:', decodeError);
+          // Fall through to raw text parsing
+          const reconstructedData = parseRawTextToLayout(rawLines);
+          setResumeData(reconstructedData);
+          alert('✨ Canvas reconstructed from visible text (metadata decode failed).');
+        }
+      } else {
+        const reconstructedData = parseRawTextToLayout(rawLines);
+        setResumeData(reconstructedData);
+        alert('✨ Canvas Layout Dynamically Reconstructed from Visible Document Tracks!');
+      }
+    } catch (error) {
+      console.error("Hydration processing failure details:", error);
+      alert('❌ Failed to process document layout configuration.');
+    }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col print:bg-white">
-      {/* Top Navigation Control Bar */}
-      <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 sticky top-0 z-50 print:hidden">
-        <div className="flex items-center gap-3">
-          <span className="font-bold text-lg tracking-wider text-slate-900">APEN RESUME</span>
-          <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded">v1.0.0</span>
-        </div>
-        
-        <div className="flex items-center gap-4">
-          {/* Theme Selector */}
-          <select 
-            value={activeTheme} 
-            onChange={(e: any) => setActiveTheme(e.target.value)}
-            className="border border-slate-300 rounded px-3 py-1.5 text-sm bg-white font-medium"
-          >
-            <option value="minimalist">Default Minimalist</option>
-            <option value="modern">Modern (Serif)</option>
-            <option value="compact">Developer Compact</option>
-          </select>
+    <div className="h-screen w-screen bg-neutral-900 text-neutral-100 flex flex-col overflow-hidden print:h-auto print:w-auto print:bg-white print:text-black print:overflow-visible">
+      <Header 
+        activeTheme={activeTheme}
+        onThemeChange={setActiveTheme}
+        onExport={handlePrint}
+        onPdfUpload={handlePdfUpload}
+      />
 
-          {/* Upload Existing */}
-          <label className="flex items-center gap-2 px-3 py-1.5 border border-slate-300 rounded text-sm font-medium text-slate-700 hover:bg-slate-50 cursor-pointer transition">
-            <Upload size={16} />
-            <span>Upload Existing</span>
-            <input type="file" accept=".pdf" onChange={handlePdfUpload} className="hidden" />
-          </label>
-
-          {/* Export PDF via Print */}
-          <button 
-            onClick={handlePrint}
-            className="flex items-center gap-2 bg-slate-900 text-white px-4 py-1.5 rounded text-sm font-medium hover:bg-slate-800 transition"
-          >
-            <Download size={16} />
-            <span>Export PDF</span>
-          </button>
-        </div>
-      </header>
-
-      {/* Main Workspace Split Screen Layout */}
-      <div className="flex-1 flex print:block">
-        {/* Left Side: Form Editor Panel */}
-        <div className="w-1/2 h-[calc(100vh-4rem)] overflow-y-auto p-6 border-r border-slate-200 bg-white print:hidden">
-          <h2 className="text-xl font-bold mb-6 text-slate-800">Resume Details</h2>
-          
-          {/* Personal Info Group */}
-          <div className="bg-slate-50 p-4 rounded-xl mb-6 border border-slate-100">
-            <h3 className="font-semibold text-sm uppercase text-slate-500 tracking-wider mb-4">Personal Contact</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <input 
-                type="text" 
-                placeholder="Full Name"
-                value={resumeData.personalInfo.fullName}
-                onChange={(e) => setResumeData({
-                  ...resumeData,
-                  personalInfo: { ...resumeData.personalInfo, fullName: e.target.value }
-                })}
-                className="p-2 border border-slate-200 rounded text-sm focus:outline-none focus:border-slate-900"
-              />
-              <input 
-                type="text" 
-                placeholder="Job Title"
-                value={resumeData.personalInfo.title}
-                onChange={(e) => setResumeData({
-                  ...resumeData,
-                  personalInfo: { ...resumeData.personalInfo, title: e.target.value }
-                })}
-                className="p-2 border border-slate-200 rounded text-sm focus:outline-none focus:border-slate-900"
-              />
-            </div>
-          </div>
-
-          {/* Dynamic Section Builder */}
-          {resumeData.sections.map((section, sIndex) => (
-            <div key={section.id} className="border border-slate-200 rounded-xl p-4 mb-4 relative">
-              <div className="flex justify-between items-center mb-3">
-                <input 
-                  type="text" 
-                  value={section.title}
-                  onChange={(e) => {
-                    const nextSections = [...resumeData.sections];
-                    nextSections[sIndex].title = e.target.value.toUpperCase();
-                    setResumeData({ ...resumeData, sections: nextSections });
-                  }}
-                  className="font-bold text-sm uppercase tracking-wide border-b border-transparent hover:border-slate-300 focus:border-slate-900 focus:outline-none"
-                />
-                <button 
-                  onClick={() => {
-                    const nextSections = resumeData.sections.filter(s => s.id !== section.id);
-                    setResumeData({ ...resumeData, sections: nextSections });
-                  }}
-                  className="text-slate-400 hover:text-red-500 transition"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-              {/* Contextual form inputs would go here based on section.type */}
-            </div>
-          ))}
-
-          <button 
-            onClick={addSection}
-            className="w-full py-3 border-2 border-dashed border-slate-300 rounded-xl flex items-center justify-center gap-2 text-slate-500 hover:border-slate-900 hover:text-slate-900 transition font-medium text-sm"
-          >
-            <Plus size={16} />
-            <span>Add Custom Section</span>
-          </button>
+      <div className="flex-1 flex flex-col md:flex-row print:block overflow-hidden print:overflow-visible">
+        <div className="w-full h-1/2 md:w-1/2 md:h-full overflow-y-auto p-6 bg-neutral-950 border-b md:border-b-0 md:border-r border-neutral-800 print:hidden">
+          <FormEditor data={resumeData} onChange={setResumeData} />
         </div>
 
-        {/* Right Side: Document Real-time Live Preview */}
-        <div className="w-1/2 h-[calc(100vh-4rem)] overflow-y-auto bg-slate-500/10 flex justify-center p-8 print:w-full print:h-auto print:bg-white print:p-0">
-          <div className={`w-[210mm] min-h-[297mm] bg-white shadow-2xl p-12 print:shadow-none print:p-0 font-sans theme-${activeTheme}`}>
-            {/* Real-time Rendered Target Blueprint Section */}
-            <div className="text-center mb-6">
-              <h1 className="text-3xl font-light tracking-widest text-slate-900 uppercase">{resumeData.personalInfo.fullName}</h1>
-              <p className="text-sm font-medium text-slate-600 tracking-wide mt-1">{resumeData.personalInfo.title}</p>
-              
-              <div className="flex justify-center gap-3 text-xs text-slate-500 mt-3 flex-wrap">
-                <span>{resumeData.personalInfo.location}</span>
-                <span>•</span>
-                <span>{resumeData.personalInfo.email}</span>
-                <span>•</span>
-                <span>{resumeData.personalInfo.phone}</span>
-              </div>
-            </div>
-
-            <hr className="border-slate-200 my-4" />
-
-            {/* Profile Summary rendering */}
-            {resumeData.summary && (
-              <div className="mb-6">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 mb-2">Professional Summary</h2>
-                <p className="text-xs leading-relaxed text-slate-700 text-justify">{resumeData.summary}</p>
-              </div>
-            )}
-
-            {/* Dynamic sections rendering */}
-            {resumeData.sections.map((section) => (
-              <div key={section.id} className="mb-6">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 mb-2">{section.title}</h2>
-                <div className="space-y-4">
-                  {section.items.map((item) => (
-                    <div key={item.id} className="text-xs">
-                      <div className="flex justify-between font-semibold text-slate-800">
-                        <span>{item.title}</span>
-                        <span className="font-normal text-slate-500">{item.dateRange}</span>
-                      </div>
-                      {item.subtitle && <div className="text-slate-600 italic mt-0.5">{item.subtitle}</div>}
-                      {item.description && <p className="text-slate-600 mt-1 leading-relaxed">{item.description}</p>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+        <div className="w-full h-1/2 md:w-1/2 md:h-full overflow-y-auto bg-neutral-800/40 flex justify-center p-4 md:p-8 print:w-full print:h-auto print:bg-white print:p-0 print:overflow-visible">
+          <div className="h-fit print:w-full print:h-auto">
+            <ResumePreview data={resumeData} theme={activeTheme} />
           </div>
         </div>
       </div>
