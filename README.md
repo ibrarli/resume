@@ -1,4 +1,4 @@
-# 📄 Apen Resume
+# 📄 Apen Resume `v0.0.1`
 
 > **The Artist of System Design — Real-Time Resume Generation Engine**
 
