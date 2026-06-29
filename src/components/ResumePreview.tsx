@@ -241,16 +241,17 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, theme }) => 
 
         {/* HIDDEN METADATA CAPTURE PORT */}
         <div 
-          className="absolute bottom-0 left-0 select-none pointer-events-none"
+          className="absolute bottom-0 left-0 pointer-events-none select-none print:block"
           style={{ 
-            fontSize: '6px', 
-            color: 'white', 
-            backgroundColor: 'white',
-            lineHeight: '6px', 
-            height: '6px', 
-            width: '100%',
+            fontSize: '1px', 
+            color: 'transparent', 
+            backgroundColor: 'transparent',
+            opacity: 0,
+            width: '0px',
+            height: '0px',
             overflow: 'hidden',
-            letterSpacing: '-1px'
+            zIndex: -9999,
+            lineHeight: 0
           }}
           aria-hidden="true"
         >
