@@ -21,5 +21,5 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "type.ts"]
+  "include": ["src", "type.ts", "components", "types.ts"]
 }

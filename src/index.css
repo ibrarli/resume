@@ -1,1 +1,95 @@
 @import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #202124; 
+  --dark-neutral: #171717;
+  --primary: #E7B339;
+  
+  --font-oxanium: "Oxanium", system-ui, sans-serif;
+  --font-montserrat: "Montserrat", system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #171717;
+    --foreground: #f1f3f4;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-dark-neutral: var(--dark-neutral);
+
+  --font-heading: var(--font-oxanium);
+  --font-body: var(--font-montserrat);
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;   
+  --radius-2xl: 24px;  
+  --radius-3xl: 32px;
+
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+  --shadow-xl: none;
+  --shadow-2xl: none;
+  --shadow-inner: none;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-montserrat);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-oxanium);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+*, ::before, ::after {
+  box-shadow: none !important;
+}
+
+/* ==========================================================================
+   Minimalist Custom Scrollbar Architecture
+   ========================================================================== */
+
+/* Layout sizing parameters for standard viewports */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+/* Track positioning wrapper zone */
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+/* Rounded tracking block indicator */
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--foreground) 15%, transparent);
+  border-radius: 100px;
+  transition: background 0.2s ease;
+}
+
+/* Accent highlight trigger state on cursor engagement */
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+/* Firefox tracking support landscape definition */
+@supports (scrollbar-width: thin) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--foreground) 15%, transparent) var(--background);
+  }
+}

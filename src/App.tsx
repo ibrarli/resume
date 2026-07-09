@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Header } from './components/Header';
-import { FormEditor } from './components/FormEditor';
-import { ResumePreview } from './components/ResumePreview';
-import type { ResumeData, DynamicSection, SectionItem } from './types';
+import { Navbar } from '../components/global/Navbar';
+import { FormEditor } from '../components/home/FormEditor';
+import { ResumePreview } from '../components/home/ResumePreview';
+import { Edit3, Eye } from 'lucide-react';
+import type { ResumeData, DynamicSection, SectionItem } from '../types';
 import * as pdfjsLib from 'pdfjs-dist';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
@@ -56,6 +57,9 @@ export default function App() {
     }
   });
 
+  // Mobile View Tracking Engine Toggle Node
+  const [activeMobileTab, setActiveMobileTab] = useState<'edit' | 'preview'>('edit');
+
   useEffect(() => {
     if (resumeData) {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(resumeData));
@@ -70,7 +74,6 @@ export default function App() {
     window.print();
   };
 
-  // Safe fallback ID generation to prevent runtime crashes over plain http/local IP addresses
   const generateSafeId = () => {
     if (typeof window !== 'undefined' && window.crypto && window.crypto.randomUUID) {
       return window.crypto.randomUUID();
@@ -177,23 +180,16 @@ export default function App() {
         fullText += lines.join(' ');
       }
 
-     // Try both old and new marker formats
       const sanitizedText = fullText.replace(/\s+/g, '');
       
       const match = 
         sanitizedText.match(/APNRSMSTART(.*?)_END/) ||
         sanitizedText.match(/STRUCTURAL_SYSTEM_MANIFEST_DATA_START_(.*?)_DATA_END/);
-      
-      console.log('Raw text length:', fullText.length);
-      console.log('Sanitized length:', sanitizedText.length);
-      console.log('Marker found:', !!match);
-      if (match) console.log('Base64 snippet:', match[1].substring(0, 80));
 
       if (match && match[1]) {
         try {
           const base64Data = match[1].replace(/[^A-Za-z0-9+/=]/g, '');
           const decoded = atob(base64Data);
-          // Handle both old escape() method and new TextDecoder method
           let decodedJson: string;
           try {
             decodedJson = decodeURIComponent(escape(decoded));
@@ -206,7 +202,6 @@ export default function App() {
           alert('🎉 Resume restored successfully!');
         } catch (decodeError) {
           console.error('Decode failed:', decodeError);
-          // Fall through to raw text parsing
           const reconstructedData = parseRawTextToLayout(rawLines);
           setResumeData(reconstructedData);
           alert('✨ Canvas reconstructed from visible text (metadata decode failed).');
@@ -223,24 +218,61 @@ export default function App() {
   };
 
   return (
-    <div className="h-screen w-screen bg-neutral-900 text-neutral-100 flex flex-col overflow-hidden print:h-auto print:w-auto print:bg-white print:text-black print:overflow-visible">
-      <Header 
+    <div className="h-screen w-screen bg-background text-foreground flex flex-col overflow-hidden print:h-auto print:w-auto print:bg-white print:text-black print:overflow-visible">
+      <Navbar 
         activeTheme={activeTheme}
         onThemeChange={setActiveTheme}
         onExport={handlePrint}
         onPdfUpload={handlePdfUpload}
       />
 
-      <div className="flex-1 flex flex-col md:flex-row print:block overflow-hidden print:overflow-visible">
-        <div className="w-full h-1/2 md:w-1/2 md:h-full overflow-y-auto p-6 bg-neutral-950 border-b md:border-b-0 md:border-r border-neutral-800 print:hidden">
+      <div className="flex-1 flex flex-col md:flex-row print:block overflow-hidden print:overflow-visible relative pb-16 md:pb-0">
+        
+        {/* Editor Form Workspace Panel (Controlled conditional tabs on mobile viewport layouts) */}
+        <div className={`w-full h-full md:w-1/2 overflow-y-auto p-4 md:p-6 bg-background md:border-r border-foreground/10 print:hidden ${
+          activeMobileTab === 'edit' ? 'block' : 'hidden md:block'
+        }`}>
           <FormEditor data={resumeData} onChange={setResumeData} />
         </div>
 
-        <div className="w-full h-1/2 md:w-1/2 md:h-full overflow-y-auto bg-neutral-800/40 flex justify-center p-4 md:p-8 print:w-full print:h-auto print:bg-white print:p-0 print:overflow-visible">
+        {/* Live Document Preview Monitor output container */}
+        <div className={`w-full h-full md:w-1/2 overflow-y-auto flex justify-center p-4 md:p-8 print:w-full print:h-auto print:bg-white print:p-0 print:overflow-visible max-sm:scale-90 max-sm:origin-top ${
+          activeMobileTab === 'preview' ? 'flex' : 'hidden md:flex'
+        }`}>
           <div className="h-fit print:w-full print:h-auto">
             <ResumePreview data={resumeData} theme={activeTheme} />
           </div>
         </div>
+
+        {/* Persistent Micro-Dock Mobile View Controls */}
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background/80 backdrop-blur-md border-2 border-foreground/10 rounded-2xl p-1 flex items-center gap-1 z-50 md:hidden shadow-lg">
+          <button
+            type="button"
+            onClick={() => setActiveMobileTab('edit')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold font-body flex items-center gap-2 transition-all cursor-pointer ${
+              activeMobileTab === 'edit' 
+                ? 'bg-primary text-dark-neutral' 
+                : 'text-foreground/60 hover:text-foreground'
+            }`}
+          >
+            <Edit3 size={13} />
+            <span>Editor</span>
+          </button>
+          
+          <button
+            type="button"
+            onClick={() => setActiveMobileTab('preview')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold font-body flex items-center gap-2 transition-all cursor-pointer ${
+              activeMobileTab === 'preview' 
+                ? 'bg-primary text-dark-neutral' 
+                : 'text-foreground/60 hover:text-foreground'
+            }`}
+          >
+            <Eye size={13} />
+            <span>Preview</span>
+          </button>
+        </div>
+
       </div>
     </div>
   );

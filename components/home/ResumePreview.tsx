@@ -1,5 +1,5 @@
 import React from 'react';
-import type { ResumeData } from '../types';
+import type { ResumeData } from '../../types';
 
 interface ResumePreviewProps {
   data: ResumeData;
@@ -59,7 +59,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, theme }) => 
       {/* Actual A4 Document Canvas */}
       <div className={`w-[210mm] min-h-[297mm] bg-white text-neutral-900 shadow-2xl p-12 relative flex flex-col justify-between border border-neutral-200 print:shadow-none print:border-none print:p-0 ${themeClasses[theme]}`}>
         
-        <div className={`flex-1 ${isSlateSidebar ? 'grid grid-cols-[1fr_2.5fr] gap-8 -mx-4' : ''}`}>
+        <div className={`flex-1 ${isSlateSidebar ? 'grid grid-cols-[1fr_2.5fr] gap-8 -mx-4' : 'flex flex-col gap-5'}`}>
           
           {/* SIDEBAR BLOCK */}
           {isSlateSidebar && (
