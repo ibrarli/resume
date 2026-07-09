@@ -57,7 +57,6 @@ export default function App() {
     }
   });
 
-  // Mobile View Tracking Engine Toggle Node
   const [activeMobileTab, setActiveMobileTab] = useState<'edit' | 'preview'>('edit');
 
   useEffect(() => {
@@ -228,24 +227,24 @@ export default function App() {
 
       <div className="flex-1 flex flex-col md:flex-row print:block overflow-hidden print:overflow-visible relative pb-16 md:pb-0">
         
-        {/* Editor Form Workspace Panel (Controlled conditional tabs on mobile viewport layouts) */}
-        <div className={`w-full h-full md:w-1/2 overflow-y-auto p-4 md:p-6 bg-background md:border-r border-foreground/10 print:hidden ${
+        {/* Editor Form Workspace Panel - Strictly hidden during print regardless of active dynamic mobile states */}
+        <div className={`w-full h-full md:w-1/2 overflow-y-auto p-4 md:p-6 bg-background md:border-r border-foreground/10 print:!hidden ${
           activeMobileTab === 'edit' ? 'block' : 'hidden md:block'
         }`}>
           <FormEditor data={resumeData} onChange={setResumeData} />
         </div>
 
-        {/* Live Document Preview Monitor output container */}
-        <div className={`w-full h-full md:w-1/2 overflow-y-auto flex justify-center p-4 md:p-8 print:w-full print:h-auto print:bg-white print:p-0 print:overflow-visible max-sm:scale-90 max-sm:origin-top ${
+        {/* Live Document Preview Monitor - Strip mobile transforms, margins, scaling, and hidden states on print */}
+        <div className={`w-full h-full md:w-1/2 overflow-y-auto flex justify-center p-4 md:p-8 max-sm:scale-90 max-sm:origin-top ${
           activeMobileTab === 'preview' ? 'flex' : 'hidden md:flex'
-        }`}>
+        } print:!flex print:w-full print:h-auto print:bg-white print:p-0 print:overflow-visible print:scale-100 print:transform-none`}>
           <div className="h-fit print:w-full print:h-auto">
             <ResumePreview data={resumeData} theme={activeTheme} />
           </div>
         </div>
 
-        {/* Persistent Micro-Dock Mobile View Controls */}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background/80 backdrop-blur-md border-2 border-foreground/10 rounded-2xl p-1 flex items-center gap-1 z-50 md:hidden shadow-lg">
+        {/* Persistent Micro-Dock Mobile View Controls - Enforced complete removal on print */}
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background/80 backdrop-blur-md border-2 border-foreground/10 rounded-2xl p-1 flex items-center gap-1 z-50 md:hidden shadow-lg print:hidden">
           <button
             type="button"
             onClick={() => setActiveMobileTab('edit')}
