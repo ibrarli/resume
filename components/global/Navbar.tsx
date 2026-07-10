@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Download, Upload, MoreVertical, Settings } from 'lucide-react';
+import { Download, Upload, MoreVertical, Check, Palette } from 'lucide-react';
 
 type ExtendedThemeUnion = 
   | 'minimalist' 
@@ -27,12 +27,27 @@ export const Navbar: React.FC<NavbarProps> = ({
   onPdfUpload,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [themeDropdownOpen, setThemeDropdownOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const themeOptions: { value: ExtendedThemeUnion; label: string }[] = [
+    { value: 'minimalist', label: '1. Default Minimalist' },
+    { value: 'left-aligned', label: '2. Left Aligned Dynamic' },
+    { value: 'colorful', label: '3. Colorful Indigo' },
+    { value: 'modern', label: '4. Modern Serif' },
+    { value: 'compact', label: '5. Developer Compact' },
+    { value: 'emerald-executive', label: '6. Emerald Executive' },
+    { value: 'slate-sidebar', label: '7. Slate Left Sidebar' },
+    { value: 'warm-editorial', label: '8. Warm Editorial' },
+    { value: 'tech-minimal', label: '9. Tech Terminal Minimal' },
+    { value: 'royal-accent', label: '10. Royal Sky Trim' },
+  ];
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setMenuOpen(false);
+        setThemeDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -67,24 +82,41 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* ==========================================
            DESKTOP ONLY VIEW CONTROLS (Hidden on Mobile)
            ========================================== */}
-        <div className="hidden md:flex items-center gap-3">
-          {/* Theme Selector */}
-          <select 
-            value={activeTheme} 
-            onChange={(e) => onThemeChange(e.target.value as ExtendedThemeUnion)}
-            className="border border-foreground/10 bg-background text-foreground/80 rounded-xl px-3 py-1.5 text-xs font-medium font-body focus:outline-none focus:border-primary cursor-pointer transition-colors"
+        <div className="hidden md:flex items-center gap-3 relative">
+          {/* Custom Desktop Dropdown Container */}
+          <button
+            type="button"
+            onClick={() => setThemeDropdownOpen(!themeDropdownOpen)}
+            className="flex items-center justify-between gap-2 border border-foreground/10 bg-background text-foreground/80 rounded-xl px-3 h-9 text-xs font-medium font-body focus:outline-none focus:border-primary cursor-pointer transition-colors w-52 text-left"
           >
-            <option value="minimalist">1. Default Minimalist (Centered)</option>
-            <option value="left-aligned">2. Left Aligned Dynamic</option>
-            <option value="colorful">3. Colorful Indigo Accent</option>
-            <option value="modern">4. Modern Serif (High Rank)</option>
-            <option value="compact">5. Developer Compact (Mono)</option>
-            <option value="emerald-executive">6. Emerald Executive</option>
-            <option value="slate-sidebar">7. Slate Left Sidebar</option>
-            <option value="warm-editorial">8. Warm Editorial Journal</option>
-            <option value="tech-minimal">9. Tech Terminal Minimal</option>
-            <option value="royal-accent">10. Royal Sky Trim</option>
-          </select>
+            <span className="truncate">
+              {themeOptions.find((t) => t.value === activeTheme)?.label}
+            </span>
+            <span className="text-[10px] text-foreground/40">▼</span>
+          </button>
+
+          {themeDropdownOpen && (
+            <div className="absolute top-11 left-0 w-56 bg-background border-2 border-foreground/10 rounded-xl shadow-xl z-50 p-1.5 max-h-80 overflow-y-auto custom-scrollbar space-y-0.5 animate-fade-in">
+              {themeOptions.map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => {
+                    onThemeChange(t.value);
+                    setThemeDropdownOpen(false);
+                  }}
+                  className={`w-full text-left text-xs px-2.5 py-1.5 rounded-lg transition-colors flex items-center justify-between font-body ${
+                    activeTheme === t.value 
+                      ? 'bg-primary text-dark-neutral font-bold' 
+                      : 'hover:bg-foreground/5 text-foreground/80'
+                  }`}
+                >
+                  <span className="truncate">{t.label}</span>
+                  {activeTheme === t.value && <Check size={12} className="shrink-0" />}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Parse PDF Action */}
           <label className="flex items-center gap-2 px-4 h-9 border-2 border-foreground/10 hover:border-foreground/30 bg-background rounded-xl text-xs font-bold font-body text-foreground/80 hover:text-foreground cursor-pointer transition-colors">
@@ -129,32 +161,34 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           {menuOpen && (
-            <div className="absolute right-0 mt-2 w-56 bg-background border-2 border-foreground/10 rounded-2xl p-2.5 shadow-xl z-50 space-y-2.5 animate-in fade-in slide-in-from-top-1 duration-100">
+            <div className="absolute right-0 mt-2 w-60 bg-background border-2 border-foreground/10 rounded-2xl p-2 shadow-xl z-50 space-y-2 animate-in fade-in slide-in-from-top-1 duration-100 max-h-[80vh] overflow-y-auto custom-scrollbar">
               
-              {/* Mobile Layout Switcher Dropdown */}
+              {/* Custom Mobile Layout List Menu */}
               <div className="space-y-1 px-1">
-                <span className="text-[9px] font-bold tracking-widest text-foreground/40 font-heading uppercase flex items-center gap-1.5">
-                  <Settings size={10} /> Choose Layout Template
+                <span className="text-[9px] font-bold tracking-widest text-foreground/40 font-heading uppercase flex items-center gap-1.5 py-1">
+                  <Palette size={10} /> Select Template Layout
                 </span>
-                <select 
-                  value={activeTheme} 
-                  onChange={(e) => {
-                    onThemeChange(e.target.value as ExtendedThemeUnion);
-                    setMenuOpen(false);
-                  }}
-                  className="w-full border-2 border-foreground/10 bg-background text-foreground/80 rounded-xl px-2.5 py-1.5 text-xs font-medium font-body focus:outline-none focus:border-primary"
-                >
-                  <option value="minimalist">1. Minimalist</option>
-                  <option value="left-aligned">2. Left Aligned</option>
-                  <option value="colorful">3. Colorful Indigo</option>
-                  <option value="modern">4. Modern Serif</option>
-                  <option value="compact">5. Dev Compact</option>
-                  <option value="emerald-executive">6. Emerald Exec</option>
-                  <option value="slate-sidebar">7. Slate Sidebar</option>
-                  <option value="warm-editorial">8. Warm Editorial</option>
-                  <option value="tech-minimal">9. Tech Minimal</option>
-                  <option value="royal-accent">10. Royal Sky</option>
-                </select>
+                
+                <div className="space-y-0.5 max-h-56 overflow-y-auto custom-scrollbar border border-foreground/5 rounded-xl p-1 bg-foreground/[0.01]">
+                  {themeOptions.map((t) => (
+                    <button
+                      key={t.value}
+                      type="button"
+                      onClick={() => {
+                        onThemeChange(t.value);
+                        setMenuOpen(false);
+                      }}
+                      className={`w-full text-left text-xs px-2.5 py-1.5 rounded-lg transition-colors flex items-center justify-between font-body ${
+                        activeTheme === t.value 
+                          ? 'bg-primary text-dark-neutral font-bold' 
+                          : 'hover:bg-foreground/5 text-foreground/80'
+                      }`}
+                    >
+                      <span className="truncate">{t.label.replace(/^\d+\.\s*/, '')}</span>
+                      {activeTheme === t.value && <Check size={11} className="shrink-0" />}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="border-t border-foreground/5 my-1" />
