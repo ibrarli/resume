@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Navbar } from '../components/global/Navbar';
 import { FormEditor } from '../components/home/FormEditor';
 import { ResumePreview } from '../components/home/ResumePreview';
-import { Edit3, Eye } from 'lucide-react';
+import { Modal } from '../components/global/Modal';
+import { Edit3, Eye, Trash2 } from 'lucide-react';
 import type { ResumeData, DynamicSection, SectionItem } from '../types';
 import * as pdfjsLib from 'pdfjs-dist';
 
@@ -58,6 +59,7 @@ export default function App() {
   });
 
   const [activeMobileTab, setActiveMobileTab] = useState<'edit' | 'preview'>('edit');
+  const [isClearModalOpen, setIsClearModalOpen] = useState(false);
 
   useEffect(() => {
     if (resumeData) {
@@ -71,6 +73,12 @@ export default function App() {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const confirmClearCache = () => {
+    localStorage.removeItem(LOCAL_STORAGE_KEY);
+    setResumeData(blankCanvasStructure);
+    setIsClearModalOpen(false);
   };
 
   const generateSafeId = () => {
@@ -198,26 +206,22 @@ export default function App() {
           }
           const parsedData: ResumeData = JSON.parse(decodedJson);
           setResumeData(parsedData);
-          alert('🎉 Resume restored successfully!');
         } catch (decodeError) {
           console.error('Decode failed:', decodeError);
           const reconstructedData = parseRawTextToLayout(rawLines);
           setResumeData(reconstructedData);
-          alert('✨ Canvas reconstructed from visible text (metadata decode failed).');
         }
       } else {
         const reconstructedData = parseRawTextToLayout(rawLines);
         setResumeData(reconstructedData);
-        alert('✨ Canvas Layout Dynamically Reconstructed from Visible Document Tracks!');
       }
     } catch (error) {
       console.error("Hydration processing failure details:", error);
-      alert('❌ Failed to process document layout configuration.');
     }
   };
 
   return (
-    <div className="h-screen w-screen bg-background text-foreground flex flex-col overflow-hidden print:h-auto print:w-auto print:bg-white print:text-black print:overflow-visible">
+    <div className="h-screen w-screen bg-background text-foreground flex flex-col overflow-hidden print:h-auto print:w-auto print:bg-white print:text-black print:overflow-visible relative">
       <Navbar 
         activeTheme={activeTheme}
         onThemeChange={setActiveTheme}
@@ -225,16 +229,27 @@ export default function App() {
         onPdfUpload={handlePdfUpload}
       />
 
+      {/* Floating Clear Button for Desktop Layout Screens */}
+      <button
+        type="button"
+        onClick={() => setIsClearModalOpen(true)}
+        className="hidden md:flex absolute top-20 right-6 z-40 p-2.5 bg-background border-2 border-foreground/10 hover:border-red-500/30 text-foreground/40 hover:text-red-500 rounded-xl transition-all cursor-pointer shadow-sm group items-center gap-1.5"
+        title="Clear complete workspace data cache"
+      >
+        <Trash2 size={14} />
+        <span className="text-[10px] font-bold font-body uppercase tracking-wider hidden group-hover:inline animate-fade-in">Clear Canvas</span>
+      </button>
+
       <div className="flex-1 flex flex-col md:flex-row print:block overflow-hidden print:overflow-visible relative pb-16 md:pb-0">
         
-        {/* Editor Form Workspace Panel - Strictly hidden during print regardless of active dynamic mobile states */}
+        {/* Editor Form Workspace Panel */}
         <div className={`w-full h-full md:w-1/2 overflow-y-auto p-4 md:p-6 bg-background md:border-r border-foreground/10 print:!hidden ${
           activeMobileTab === 'edit' ? 'block' : 'hidden md:block'
         }`}>
           <FormEditor data={resumeData} onChange={setResumeData} />
         </div>
 
-        {/* Live Document Preview Monitor - Strip mobile transforms, margins, scaling, and hidden states on print */}
+        {/* Live Document Preview Monitor */}
         <div className={`w-full h-full md:w-1/2 overflow-y-auto flex justify-center p-4 md:p-8 max-sm:scale-90 max-sm:origin-top ${
           activeMobileTab === 'preview' ? 'flex' : 'hidden md:flex'
         } print:!flex print:w-full print:h-auto print:bg-white print:p-0 print:overflow-visible print:scale-100 print:transform-none`}>
@@ -243,7 +258,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* Persistent Micro-Dock Mobile View Controls - Enforced complete removal on print */}
+        {/* Persistent Micro-Dock Mobile View Controls */}
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background/80 backdrop-blur-md border-2 border-foreground/10 rounded-2xl p-1 flex items-center gap-1 z-50 md:hidden shadow-lg print:hidden">
           <button
             type="button"
@@ -270,9 +285,49 @@ export default function App() {
             <Eye size={13} />
             <span>Preview</span>
           </button>
-        </div>
 
+          <div className="w-[1px] h-5 bg-foreground/10 mx-1" />
+
+          {/* Integrated Mobile Clear Canvas Action Item */}
+          <button
+            type="button"
+            onClick={() => setIsClearModalOpen(true)}
+            className="p-2 text-foreground/40 hover:text-red-500 transition-colors cursor-pointer"
+            title="Clear canvas data"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
       </div>
+
+      {/* Global Framework Modal Confirmation Anchor */}
+      <Modal 
+        isOpen={isClearModalOpen} 
+        onClose={() => setIsClearModalOpen(false)} 
+        title="Reset System Workspace"
+      >
+        <div className="space-y-4 text-center">
+          <p className="text-foreground/70 text-xs font-medium leading-relaxed">
+            Are you sure you want to completely clear the workspace canvas? This action clears all persistent local storage variables and cannot be reversed.
+          </p>
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setIsClearModalOpen(false)}
+              className="h-9 px-4 border-2 border-foreground/10 rounded-xl font-bold text-foreground/60 hover:text-foreground transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={confirmClearCache}
+              className="h-9 px-4 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-colors cursor-pointer"
+            >
+              Clear Everything
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
