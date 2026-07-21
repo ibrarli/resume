@@ -62,12 +62,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <img
           src="/logo/resume_logo.svg"
           alt="Apen Resume Icon"
-          className="block dark:hidden w-7 h-7 sm:w-8 sm:h-8 object-contain"
-        />
-        <img
-          src="/logo/resume_logo_dark.svg"
-          alt="Apen Resume Icon"
-          className="hidden dark:block w-7 h-7 sm:w-8 sm:h-8 object-contain"
+          className="block  w-7 h-7 sm:w-9 sm:h-9 object-contain"
         />
         <div className="flex items-baseline">
           <span className="text-base sm:text-xl font-bold tracking-tight text-foreground font-heading whitespace-nowrap">

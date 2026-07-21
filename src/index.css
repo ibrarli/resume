@@ -4,7 +4,9 @@
   --background: #ffffff;
   --foreground: #202124; 
   --dark-neutral: #171717;
-  --primary: #E7B339;
+  --primary: #ce4a4a;
+  --secondary: #E7B339;
+
   
   --font-oxanium: "Oxanium", system-ui, sans-serif;
   --font-montserrat: "Montserrat", system-ui, sans-serif;
@@ -21,6 +23,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
   --color-dark-neutral: var(--dark-neutral);
 
   --font-heading: var(--font-oxanium);
